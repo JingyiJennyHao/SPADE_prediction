@@ -101,7 +101,7 @@ generate_data <- function(simulation) {
 
 Dataset <- generate_data(10)
 
-llh <- function(params){Dataset$final_f(params)}
+llh <- function(params){-Dataset$final_f(params)}
 
 initial_params <- c(0, 0, 0, 0, 0)
 
