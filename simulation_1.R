@@ -2,7 +2,7 @@
 ### Update: Something wrong with the likelihood function
 ### Updated 0106  Revise the function of likelihood
 ### Update 0112  Revise the function of Likelihood
-### Update 0116 Still llh
+### Update 0116 Still llh !!Schade!!
 
 # library(MASS)
 # library(mvtnorm)
