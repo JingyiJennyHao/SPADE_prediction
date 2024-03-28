@@ -25,9 +25,9 @@ for (i in 1:100) {
 }
 
 ################################# Statistical Inference #################################
-#calculate three part of Observed Information matrix
+#calculate three parts of Observed Information matrix
 # reference: http://www.jstor.org/stable/2345828
-params_hat <- initial_alpha
+params_hat <- expit(initial_alpha)
 part1 <- B(params_hat, params_hat, simulated_dataset) 
 part2 <- S(params_hat, params_hat, simulated_dataset) 
 Si_list <- Si(params_hat, params_hat, simulated_dataset)
