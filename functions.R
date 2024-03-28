@@ -1,5 +1,7 @@
+#sourceCpp("llh.cpp")
+
 ################################ simulated dataset ################################
-dataset <- function(sample_size){
+dataset <- function(sample_size,alpha){
   results_df <- data.frame(Ji_list = numeric(),
                            zi_list = numeric(),
                            pi1_list = numeric(),
@@ -11,7 +13,7 @@ dataset <- function(sample_size){
   for (i in 1:sample_size) {
     Ji <- round(500 * rweibull(1, shape = 1, scale = 1.5))
     Z_i <- sample(c(0, 1), 1)
-    pi <- rdirichlet(1, c(1, 1, 10))
+    pi <- rdirichlet(1, alpha)
     pi1 <- pi[1, 1]
     pi2 <- pi[1, 2]
     
@@ -45,14 +47,13 @@ expit <- function(k){
 #################### generate complete log-likelihood function ####################
 # li: dirichlet-multinomial
 li <- function(ni1,ni2,ni3,p,alpha){
-  temp <- lfactorial(ni1 + ni2 + ni3) - lfactorial(ni1) - lfactorial(ni2) - lfactorial(ni3) + ni1 * log(p[1]) + ni2 * log(p[2]) + ni3 * log(p[3]) + ddirichlet(p, alpha, log = TRUE)
+  temp <- log_factorial(ni1 + ni2 + ni3) - log_factorial(ni1) - log_factorial(ni2) - log_factorial(ni3) + ni1 * log(p[1]) + ni2 * log(p[2]) + ni3 * log(p[3]) + ddirichlet(p, alpha, log = TRUE)
   return(temp)
 }
 
 # complete log-likelihood
-llhc <- function(t_alpha, t_params, simulated_dataset) {
+llhc_R <- function(t_alpha, t_params, simulated_dataset) {
   alpha <- expit(t_alpha)
-  print(alpha)
   params <- expit(t_params)
   sum_temp_mean <- 0
   pis <- rdirichlet(1000, params)
