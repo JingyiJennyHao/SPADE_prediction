@@ -148,17 +148,23 @@ for (i in 1:replications){
 }
 
 combined_data <- summary
+
 column_names <- c(paste("bias", 1:7, sep = ""), 
                   paste("se", 1:7, sep = ""), 
                   paste("mse", 1:7, sep = ""), 
                   paste("coverage", 1:7, sep = ""),
                   paste("convergence","_",sep=""),
                   paste("saddle","_",sep=""),
-                  paste("PI_rate1","_",sep=""),
-                  paste("PI_rate2","_",sep=""),
-                  paste("PI_rate3","_",sep=""),
-                  paste("PI_rate4","_",sep=""),
-                  paste("PI_rate5","_",sep=""))
+                  paste("PI_rate11","_",sep=""),
+                  paste("PI_rate12","_",sep=""),
+                  paste("PI_rate21","_",sep=""),
+                  paste("PI_rate22","_",sep=""),
+                  paste("PI_rate31","_",sep=""),
+                  paste("PI_rate32","_",sep=""),
+                  paste("PI_rate41","_",sep=""),
+                  paste("PI_rate42","_",sep=""),
+                  paste("PI_rate51","_",sep="")
+                  )
 
 # Assign column names to the data frame
 colnames(combined_data) <- column_names
