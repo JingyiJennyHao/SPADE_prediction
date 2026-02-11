@@ -1,0 +1,670 @@
+---
+title: "simulation_0129"
+author: "Jingyi Hao"
+date: "2026-01-29"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(numDeriv)
+library(LaplacesDemon)
+library(MASS)
+library(pracma)
+library(Rcpp)
+library(MGLM)
+library(VGAM)
+library(extraDistr)
+```
+
+```{r}
+true_beta <- c(2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6, 
+               2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6,
+               2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6)
+
+############################### functions ###############################
+write_row <- function(df_row, file) {
+  stopifnot(is.data.frame(df_row), nrow(df_row) == 1)
+  if (!file.exists(file)) {
+    write.table(df_row, file, sep = ",", row.names = FALSE, col.names = TRUE)
+  } else {
+    write.table(df_row, file, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
+  }
+}
+
+softmax3 <- function(a1, a2) {
+  den <- 1 + exp(a1) + exp(a2)
+  c(exp(a1)/den, exp(a2)/den, 1/den)
+}
+
+## dataset
+gen_simdata <- function(J, true_beta=true_beta, seed=seed){
+  set.seed(seed)
+  Time <- 3
+  mu <- c(1, 2)
+  A  <- diag(c(0.7, 0.5))
+  Sigma_eps <- matrix(c(0.2, 0.1, 0.1, 0.2), 2, 2)
+
+  hos.Xi <- vector("list", J)
+  
+
+  for (j in 1:J) {
+    X <- matrix(NA, nrow = Time, ncol = 2)
+    X[1, ] <- mu
+    for (t in 2:Time) {
+      eps <- mvrnorm(1, mu = c(0,0), Sigma = Sigma_eps)
+      X[t, ] <- mu + A %*% (X[t-1, ] - mu) + eps
+    }
+    hos.Xi[[j]] <- rbind(x0 = 1, x1 = X[,1], x2 = X[,2])
+  }
+
+  true_beta11 <- true_beta[1:3]
+  true_beta12 <- true_beta[4:6]
+  true_beta13 <- true_beta[7]
+  true_beta14 <- true_beta[8:10]
+  true_beta15 <- true_beta[11:13]
+  true_beta16 <- true_beta[14]
+  
+  true_beta21 <- true_beta[15:17]
+  true_beta22 <- true_beta[18:20]
+  true_beta23 <- true_beta[21]
+  true_beta24 <- true_beta[22:24]
+  true_beta25 <- true_beta[25:27]
+  true_beta26 <- true_beta[28]
+  
+  true_beta31 <- true_beta[29:31]
+  true_beta32 <- true_beta[32:34]
+  true_beta33 <- true_beta[35]
+  true_beta34 <- true_beta[36:38]
+  true_beta35 <- true_beta[39:41]
+  true_beta36 <- true_beta[42]
+
+  
+  sim_dat1 <- matrix(NA, nrow = J * Time, ncol = 24)
+
+  colnames(sim_dat1) <- c("j","t","Nj","pj1","pj2","pj3","pj4","pj5","pj6",
+                          "nj1","nj2","nj3","nj4","nj5","nj6",
+                          "a1","a2","a3","a4","a5","a6","x0","x1","x2")
+  row_idx <- 1
+  
+  for (j in 1:J) {
+    Nj1  <- sample(100:2000, 1)
+    Nj2  <- sample(100:2000, 1)
+    Nj3  <- sample(100:2000, 1)
+    Xj1 <- hos.Xi[[j]][,1]
+    Xj2 <- hos.Xi[[j]][,2]
+    Xj3 <- hos.Xi[[j]][,3]
+      
+    alpha1 <- c(exp(true_beta11 %*% Xj1),
+                exp(true_beta12 %*% Xj1),
+                exp(true_beta13),
+                exp(true_beta14 %*% Xj1),
+                exp(true_beta15 %*% Xj1),
+                exp(true_beta16))
+    
+    alpha2 <- c(exp(true_beta21 %*% Xj2),
+                exp(true_beta22 %*% Xj2),
+                exp(true_beta23),
+                exp(true_beta24 %*% Xj2),
+                exp(true_beta25 %*% Xj2),
+                exp(true_beta26))
+    
+    alpha3 <- c(exp(true_beta31 %*% Xj3),
+                exp(true_beta32 %*% Xj3),
+                exp(true_beta33),
+                exp(true_beta34 %*% Xj3),
+                exp(true_beta35 %*% Xj3),
+                exp(true_beta36))
+      
+      
+    p_j <- LaplacesDemon::rdirichlet(1, c(alpha1,alpha2,alpha3))
+    p_j1 <- p_j[1:6]
+    p_j2 <- p_j[7:12]
+    p_j3 <- p_j[13:18]
+    
+    p_j1_norm <- p_j1 / sum(p_j1)
+    p_j2_norm <- p_j2 / sum(p_j2)
+    p_j3_norm <- p_j3 / sum(p_j3)
+      
+    n_j1 <- rmultinom(1, size = Nj1, prob = p_j1)
+    n_j2 <- rmultinom(1, size = Nj2, prob = p_j2)
+    n_j3 <- rmultinom(1, size = Nj3, prob = p_j3)
+
+    sim_dat1[row_idx, ] <- c(j, 1, Nj1, p_j1_norm, n_j1, alpha1, Xj1); row_idx <- row_idx + 1
+    sim_dat1[row_idx, ] <- c(j, 2, Nj2, p_j2_norm, n_j2, alpha2, Xj2); row_idx <- row_idx + 1
+    sim_dat1[row_idx, ] <- c(j, 3, Nj3, p_j3_norm, n_j3, alpha3, Xj3); row_idx <- row_idx + 1
+}
+
+  set.seed(seed+5000)
+  
+  row_idx <- 1
+  
+  sim_dat2 <- sim_dat1
+  for (r in 1:nrow(sim_dat2)) {
+    Nj_new  <- sample(100:2000, 1)
+
+    p_norm <- as.numeric(sim_dat1[r, paste0("pj", 1:6)])
+    n_new  <- as.numeric(rmultinom(1, size = Nj_new, prob = p_norm))
+
+    sim_dat2[r, paste0("Nj")] <- Nj_new
+    sim_dat2[r, paste0("nj", 1:6)] <- n_new
+    }
+  
+  return(list(sim_dat1 = sim_dat1, sim_dat2 = sim_dat2))
+}
+```
+
+
+```{r}
+## likelihood for each j,t row
+ll_row <- function(j, t, beta, sim_dat) {
+  idx <- which(sim_dat[, "j"] == j)[t]
+  njt <- as.numeric(sim_dat[idx, c('nj1','nj2','nj3','nj4','nj5','nj6')])
+  xjt <- c(1, sim_dat[idx,'x1'], sim_dat[idx,'x2'])
+
+  a1 <- exp(drop(t(xjt) %*% beta[1:3]))
+  a2 <- exp(drop(t(xjt) %*% beta[4:6]))
+  a3 <- exp(beta[7])
+  a4 <- exp(drop(t(xjt) %*% beta[8:10]))
+  a5 <- exp(drop(t(xjt) %*% beta[11:13]))
+  a6 <- exp(beta[14])
+  alpha <- c(a1,a2,a3,a4,a5,a6)
+
+  MGLM::ddirmn(njt, alpha)
+}
+
+Phi_i_fun <- function(j, weights, beta, sim_dat, Time) {
+  sum(weights * sapply(1:Time, function(t) ll_row(j, t, beta, sim_dat)))
+}
+
+neg_comp_llh <- function(beta, weights, sim_dat, J, Time) {
+  -sum(sapply(1:J, function(j) Phi_i_fun(j, weights, beta, sim_dat, Time)))
+}
+
+# calculate grad and hess for each j and t in term of beta
+precompute_grad_hess <- function(beta, sim_dat, J, Time) {
+  p <- length(beta)
+  G <- vector("list", J)
+  H <- vector("list", J)
+  for (j in 1:J) {
+    Gj <- matrix(0, p, Time)
+    Hj <- vector("list", Time)
+    for (t in 1:Time) {
+      f_jt <- function(b) ll_row(j, t, b, sim_dat)
+      Gj[, t] <- numDeriv::grad(f_jt, beta)
+      Hj[[t]] <- numDeriv::hessian(f_jt, beta)
+    }
+    G[[j]] <- Gj
+    H[[j]] <- Hj
+  }
+  result <- list(G = G, H = H, p = p, Time = Time, J=J)
+  return(result)
+}
+
+# J_mat_cached <- function(weights, cache) {
+#   p <- cache$p
+#   J <- cache$J
+#   U <- matrix(0, p, J)
+#   for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights
+#   res <- (U %*% t(U)) / (J^2)
+#   return(res)
+# }
+
+# Var = H^-1 J H^-1
+
+J_mat_cached <- function(weights, cache) {
+  p <- cache$p
+  J <- cache$J
+  U <- matrix(0, p, J)
+  for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights  # g_j in column j
+  g_bar <- rowMeans(U)            # (1/J) * sum_j g_j
+  res   <- g_bar%*%t(g_bar)       # g_bar %*% t(g_bar)
+  return(res)
+}
+
+H_mat_cached <- function(weights, cache) {
+  p <- cache$p
+  J <- cache$J
+  Hsum <- matrix(0, p, p)
+  for (j in 1:J) for (t in 1:cache$Time)
+    Hsum <- Hsum + weights[t] * (- cache$H[[j]][[t]])
+  return(Hsum / J)
+}
+
+var_sandwich_cached <- function(weights, cache) {
+  H  <- H_mat_cached(weights, cache)
+  Jm <- J_mat_cached(weights, cache)
+  Hinv <- solve(H)
+  Hinv %*% Jm %*% t(Hinv)
+}
+
+stats_samples1 <- function(dir_param){
+  x <- rdirichlet(1000, dir_param)
+  stat <- x[,1]+x[,2]-1/9*(x[,4]+x[,5])
+  return(stat)
+}
+
+stats_samples2 <- function(dir_param){
+  x <- rdirichlet(1000, dir_param)
+  stat <- x[,1]-1/9*x[,4]
+  return(stat)
+}
+
+stats_samples3 <- function(dir_param, size){
+  x <- rdirmnom(1000, size = size, dir_param)
+  stat <- x[,1] + x[,2] - 1/9*(x[,4]+x[,5])
+  return(stat)
+}
+
+hpd <- function(sample_list, prob=0.95){
+  x <- sort(sample_list[is.finite(sample_list)])
+  M <- length(x); k <- ceiling(prob*M)
+  if (k >= M) return(c(min(x), max(x)))
+  w <- x[k:M] - x[1:(M-k+1)]
+  i <- which.min(w)
+  c(x[i], x[i + k - 1])
+}
+
+
+# functions for statistical inference intervals
+PI_betap <- function(alpha,shape1,shape2,scale) {
+  ratio_samples <- sort(rbetapr(5000, shape1, shape2, scale))
+  pr_samples <- dbetapr(ratio_samples, shape1, shape2, scale)
+  cdf_samples <- pbetapr(ratio_samples, shape1, shape2, scale)
+  mode <- which.max(pr_samples)
+  if (mode != 1){
+    intervals <- numeric(mode)
+    index1s <- numeric(mode)
+    index2s <- numeric(mode)
+    for (index in 1:mode) {
+      p1 <- pr_samples[index]
+      # Find the index of the value in pr_samples[mode+1:] that is closest to p1
+      p2_index_range <- (mode + 1):length(pr_samples)
+      differences <- abs(pr_samples[p2_index_range] - p1)
+      index2 <- p2_index_range[which.min(differences)]
+      # Calculate the interval
+      interval <- cdf_samples[index2] - cdf_samples[index]
+      # Store the interval and indices
+      intervals[index] <- interval
+      index1s[index] <- index
+      index2s[index] <- index2
+    }
+    # Find the closest interval to 0.95
+    closest_index <- which.min(abs(intervals - alpha))
+    # Get the corresponding indices
+    index <- index1s[closest_index]
+    index2 <- index2s[closest_index]
+    return(list(l = ratio_samples[index], u = ratio_samples[index2]))
+  }
+  if (mode == 1){
+    upper <- qbetapr(0.95, shape1, shape2, scale)
+    return(list(l = 0, u = upper))}
+}
+
+##### Prediction Interval_Beta #####
+PI_beta <- function(alpha,shape1,shape2,scale) {
+  ratio_samples <- sort(rbeta(5000, shape1, shape2, scale))
+  pr_samples <- dbeta(ratio_samples, shape1, shape2, scale)
+  cdf_samples <- pbeta(ratio_samples, shape1, shape2, scale)
+  mode <- which.max(pr_samples)
+  if (mode != 1){
+    intervals <- numeric(mode)
+    index1s <- numeric(mode)
+    index2s <- numeric(mode)
+    for (index in 1:mode) {
+      p1 <- pr_samples[index]
+      # Find the index of the value in pr_samples[mode+1:] that is closest to p1
+      p2_index_range <- (mode + 1):length(pr_samples)
+      differences <- abs(pr_samples[p2_index_range] - p1)
+      index2 <- p2_index_range[which.min(differences)]
+      # Calculate the interval
+      interval <- cdf_samples[index2] - cdf_samples[index]
+      # Store the interval and indices
+      intervals[index] <- interval
+      index1s[index] <- index
+      index2s[index] <- index2
+    }
+    # Find the closest interval to 0.95
+    closest_index <- which.min(abs(intervals - alpha))
+    # Get the corresponding indices
+    index <- index1s[closest_index]
+    index2 <- index2s[closest_index]
+    return(list(l = ratio_samples[index], u = ratio_samples[index2]))
+  }
+  if (mode == 1){
+    upper <- qbeta(0.95, shape1, shape2, scale)
+    return(list(l = 0, u = upper))}
+}
+
+##### Prediction Interval_BetaSum #####
+PI_SumBeta <- function(alpha,alpha_hat){
+  n_sim <- 2000
+  sample <- rdirichlet(5000,alpha_hat)
+  sum_samples <- sort(sample[,2]+sample[,3])
+  density_estimate <- density(sum_samples)
+  pr <- (approx(density_estimate$x, density_estimate$y, xout = sum_samples)$y)
+  mode_index <- which.max(pr)
+  
+  intervals <- numeric(mode_index)
+  index1s <- numeric(mode_index)
+  index2s <- numeric(mode_index)
+  
+  if (mode_index != 1){
+    for (index in 1:mode_index) {
+      p1 <- pr[index]
+      index2_range <- (mode_index + 1):length(sum_samples)
+      differences <- abs(pr[index2_range] - p1)
+      index2 <- index2_range[which.min(differences)]
+      interval <- index2-index
+      intervals[index] <- interval
+      index1s[index] <- index
+      index2s[index] <- index2
+    }
+    closest_index <- which.min(abs(intervals/length(sum_samples) - alpha))
+    # Get the corresponding indices
+    index1 <- index1s[closest_index]
+    index2 <- index2s[closest_index]
+    return(list(l = sum_samples[index1], u = sum_samples[index2]))
+  }
+  if (mode_index == 1){
+    upper <- quantile(sum_samples,0.95)
+    return(list(l = 0, u = upper))}
+}
+
+##### Prediction Interval_Binomial #####
+PI_binomial <- function(alpha, N, p){
+  upper <- N*p + 1.96*sqrt(N*p*(1-p))
+  lower <- N*p - 1.96*sqrt(N*p*(1-p))
+  return(list(l = lower, u = upper))
+} 
+```
+
+
+```{r}
+## -------------------- One simulation --------------------
+run_one_sim <- function(seed, out_csv) {
+  set.seed(seed)
+  Time <- 3
+  J <- 200
+  datasets <- gen_simdata(J, true_beta = true_beta, seed = seed)
+  sim_dat <- datasets$sim_dat1
+  sim_dat2 <- datasets$sim_dat2
+
+  fixed_weights <- c(1,1,1)  # start equal
+  beta_best_val <- NA_real_
+  beta_hat <- rep(NA_real_, 14)
+  beta_conv_flag <- NA_integer_
+  w_conv_flag <- NA_integer_
+
+  for (loop in 1:2) {
+    # β-step:
+    optimal_list <- vector("list", 100)
+    for (rep in 1:100) {
+      stpt <- c(2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6) + rnorm(14,0,0.1)
+      #stpt <- c(runif(13, min=0, max=1), 6)
+      fit <- optim(stpt, neg_comp_llh, weights = fixed_weights, sim_dat = sim_dat, J=J, Time=Time, 
+                   control = list(maxit = 8000))
+      optimal_list[[rep]] <- list(value = fit$value, par = fit$par, convergence = fit$convergence)
+    }
+    converged <- Filter(function(x) x$convergence == 0, optimal_list)
+    if (length(converged) == 0) stop("No converged beta fits.")
+    pick <- which.min(sapply(converged, `[[`, "value"))
+    beta_hat <- converged[[pick]]$par
+    beta_best_val <- converged[[pick]]$value
+    beta_conv_flag <- 1L
+
+    # cache at beta_hat
+    cache <- precompute_grad_hess(beta_hat, sim_dat, J, Time)
+
+    # w-step: 2-dim softmax param
+    objective_var_fun <- function(alpha) {
+      w <- softmax3(alpha[1], alpha[2])
+      V <- var_sandwich_cached(w, cache)
+      sum(diag(V))
+    }
+    ow <- optim(par = c(0,0), fn = objective_var_fun, control = list(maxit = 8000))
+    w_conv_flag <- as.integer(ow$convergence == 0)
+
+    fixed_weights <- softmax3(ow$par[1], ow$par[2])
+    
+    if (w_conv_flag != 1){
+      var_ori <- var_sandwich_cached(c(1,1,1), cache)
+      if (ow$value >= sum(diag(var_ori))){
+        fixed_weights <- c(1,1,1)
+      }
+    }
+  }
+
+  # with final weight, find final beta
+  optimal_list <- vector("list", 100)
+  for (rep in 1:100) {
+    stpt <- c(2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6) + rnorm(14,0,0.1)
+    fit <- optim(stpt, neg_comp_llh, weights = fixed_weights, sim_dat = sim_dat, J=J, Time=Time,
+                 control = list(maxit = 8000))
+    optimal_list[[rep]] <- list(value = fit$value, par = fit$par, convergence = fit$convergence)
+  }
+  converged <- Filter(function(x) x$convergence == 0, optimal_list)
+  if (length(converged) == 0) stop("No converged beta fits.")
+  pick <- which.min(sapply(converged, `[[`, "value"))
+  beta_hat <- converged[[pick]]$par
+  beta_best_val <- converged[[pick]]$value
+  beta_conv_flag <- 1
+  
+  # inference on beta
+  cache_final <- precompute_grad_hess(beta_hat, sim_dat, J, Time)
+  Vhat <- var_sandwich_cached(fixed_weights, cache_final)
+  se   <- sqrt(diag(Vhat))
+  upper <- beta_hat + 1.96 * se
+  lower <- beta_hat - 1.96 * se
+  cover <- as.integer((true_beta >= lower) & (true_beta <= upper))
+  
+  
+  # inference on prediction
+  PI_rate11 <- 0
+  PI_rate12 <- 0
+  PI_rate13 <- 0
+  PI_rate14 <- 0
+  PI_rate15 <- 0
+  
+  PI_rate21 <- 0
+  PI_rate22 <- 0
+  PI_rate23 <- 0
+  PI_rate24 <- 0
+  PI_rate25 <- 0
+  
+  PI_rate31 <- 0
+  PI_rate32 <- 0
+  PI_rate33 <- 0
+  PI_rate34 <- 0
+  
+  for (j in (1:nrow(sim_dat2))){
+    xi <- as.numeric(sim_dat2[j, c("x0","x1","x2")])
+    Ni <- as.numeric(sim_dat[j, "Nj"])
+    Ni_star <- as.numeric(sim_dat2[j, "Nj"])
+    pi1 <- sim_dat2[j, "pj1"]
+    pi2 <- sim_dat2[j, "pj2"]
+    pi3 <- sim_dat2[j, "pj3"]
+    pi4 <- sim_dat2[j, "pj4"]
+    pi5 <- sim_dat2[j, "pj5"]
+    pi6 <- sim_dat2[j, "pj6"]
+    
+    a1_hat <- exp(drop(t(xi) %*% beta_hat[1:3]))
+    a2_hat <- exp(drop(t(xi) %*% beta_hat[4:6]))
+    a3_hat <- exp(beta_hat[7])
+    a4_hat <- exp(drop(t(xi) %*% beta_hat[8:10]))
+    a5_hat <- exp(drop(t(xi) %*% beta_hat[11:13]))
+    a6_hat <- exp(beta_hat[14])
+    
+    ni1 <- sim_dat[j, "nj1"]
+    ni2 <- sim_dat[j, "nj2"]
+    ni3 <- sim_dat[j, "nj3"]
+    ni4 <- sim_dat[j, "nj4"]
+    ni5 <- sim_dat[j, "nj5"]
+    ni6 <- sim_dat[j, "nj6"]
+    
+    ni1_star <- sim_dat2[j, "nj1"]
+    ni2_star <- sim_dat2[j, "nj2"]
+    ni3_star <- sim_dat2[j, "nj3"]
+    ni4_star <- sim_dat2[j, "nj4"]
+    ni5_star <- sim_dat2[j, "nj5"]
+    ni6_star <- sim_dat2[j, "nj6"]
+    
+    alpha_hat1 <- c(a1_hat, a2_hat, a3_hat, a4_hat, a5_hat, a6_hat)
+    alpha_hat2 <- c(a1_hat+ni1, a2_hat+ni2, a3_hat+ni3, a4_hat+ni4, a5_hat+ni5, a6_hat+ni6)
+    
+    ##### First, conditioned on Xi
+    # 1. pi1 + pi2 - 1/9*(pi4 + pi5)
+    stats <- pi1 + pi2 - (1/9)*(pi4 + pi5)
+    st <- stats_samples1(alpha_hat1)
+    interval11 <- hpd(st, prob=0.95)
+    PI_rate_11_i <- as.integer((stats >= interval11[1]) && (stats <= interval11[2]))
+    PI_rate11 <- PI_rate11 + PI_rate_11_i
+    
+    # 2. pi1 - 1/9*pi4
+    stats <- pi1 - (1/9)*pi4
+    st <- stats_samples2(alpha_hat1)
+    interval12 <- hpd(st, prob=0.95)
+    PI_rate_12_i <- as.integer((stats >= interval12[1]) && (stats <= interval12[2]))
+    PI_rate12 <- PI_rate12 + PI_rate_12_i
+    
+    # 3. pi2/pi1
+    ratio_star <- pi2/pi1
+    interval13 <- PI_betap(0.95,alpha_hat1[2],alpha_hat1[1],1)
+    PI_rate13_i <- as.integer((ratio_star >= interval13$l) && (ratio_star <= interval13$u))
+    PI_rate13 <- PI_rate13 + PI_rate13_i
+    
+    # 4. pi5/pi4
+    ratio_star <- pi5/pi4
+    interval14 <- PI_betap(0.95,alpha_hat1[5],alpha_hat1[4],1)
+    PI_rate14_i <- as.integer((ratio_star >= interval14$l) && (ratio_star <= interval14$u))
+    PI_rate14 <- PI_rate14 + PI_rate14_i
+    
+    # 5. (ni1+ni2)-1/9*(ni4+ni5)
+    stats <- (ni1+ni2) - (1/9)*(ni4+ni5)
+    st <- stats_samples3(alpha_hat1, Ni_star)
+    interval15 <- hpd(st, prob=0.95)
+    PI_rate_15_i <- as.integer((stats >= interval15[1]) && (stats <= interval15[2]))
+    PI_rate15 <- PI_rate15 + PI_rate_15_i
+    
+    ##### Second, conditioned on Xi & ni
+    # 1. pi1 + pi2 - 1/9*(pi4 + pi5)
+    stats <- pi1 + pi2 - (1/9)*(pi4 + pi5)
+    st <- stats_samples1(alpha_hat2)
+    interval21 <- hpd(st, prob=0.95)
+    PI_rate_21_i <- as.integer((stats >= interval21[1]) && (stats <= interval21[2]))
+    PI_rate21 <- PI_rate21 + PI_rate_21_i
+    
+    # 2. pi1 - 1/9*pi4
+    stats <- pi1 - (1/9)*pi4
+    st <- stats_samples2(alpha_hat2)
+    interval22 <- hpd(st, prob=0.95)
+    PI_rate_22_i <- as.integer((stats >= interval22[1]) && (stats <= interval22[2]))
+    PI_rate22 <- PI_rate22 + PI_rate_22_i
+    
+    # 3. pi2/pi1
+    ratio_star <- pi2/pi1
+    interval23 <- PI_betap(0.95,alpha_hat2[2],alpha_hat2[1],1)
+    PI_rate23_i <- as.integer((ratio_star >= interval23$l) && (ratio_star <= interval23$u))
+    PI_rate23 <- PI_rate23 + PI_rate23_i
+    
+    # 4. pi5/pi4
+    ratio_star <- pi5/pi4
+    interval24 <- PI_betap(0.95,alpha_hat2[5],alpha_hat2[4],1)
+    PI_rate24_i <- as.integer((ratio_star >= interval24$l) && (ratio_star <= interval24$u))
+    PI_rate24 <- PI_rate24 + PI_rate24_i
+    
+    # 5. (ni1+ni2)-1/9*(ni4+ni5)
+    stats <- (ni1_star+ni2_star) - (1/9)*(ni4_star + ni5_star)
+    st <- stats_samples3(alpha_hat2, Ni_star)
+    interval25 <- hpd(st, prob=0.95)
+    PI_rate_25_i <- as.integer((stats >= interval25[1]) && (stats <= interval25[2]))
+    PI_rate25 <- PI_rate25 + PI_rate_25_i
+    
+    ##### Third, conditioned on Xi & ni1
+    # 1. pi1 + pi2 - 1/9*(pi4 + pi5)
+    stats <- pi1 + pi2 - (1/9)*(pi4 + pi5)
+    pi1_sample <- rbeta(1000, ni1 + alpha_hat1[1], (Ni - ni1) + sum(alpha_hat1[2:6]))
+    W <- rdirichlet(1000, alpha_hat1[2:6])
+    W_scaled <- sweep(W, 1, 1 - pi1_sample, "*")   # row-wise multiply by (1 - pi1)
+    Pi_sample <- cbind(pi1_sample, W_scaled)              # 1000 x 6 matrix of (pi1..pi6)
+    pi2_sample <- Pi_sample[, 2]
+    pi4_sample <- Pi_sample[, 4]
+    pi5_sample <- Pi_sample[, 5]
+    samples <- pi1_sample + pi2_sample - (1/9)*(pi4_sample + pi5_sample)
+    interval31 <- hpd(samples, prob=0.95)
+    PI_rate_31_i <- as.integer((stats >= interval31[1]) && (stats <= interval31[2]))
+    PI_rate31 <- PI_rate31 + PI_rate_31_i
+    
+    # 2. pi1 - 1/9*pi4
+    stats <- pi1 - (1/9)*pi4
+    samples <- pi1_sample - (1/9)*pi4_sample
+    interval32 <- hpd(samples, prob=0.95)
+    PI_rate_32_i <- as.integer((stats >= interval32[1]) && (stats <= interval32[2]))
+    PI_rate32 <- PI_rate32 + PI_rate_32_i
+    
+    # 3. pi2/pi1
+    ratio_star <- pi2/pi1
+    ratio_sample <- pi2_sample / pi1_sample
+    interval33 <- hpd(ratio_sample, prob=0.95)
+    PI_rate33_i <- as.integer((ratio_star >= interval33[1]) && (ratio_star <= interval33[2]))
+    PI_rate33 <- PI_rate33 + PI_rate33_i
+    
+    # 4. pi5/pi4
+    ratio_star <- pi5/pi4
+    ratio_sample <- pi5_sample / pi4_sample
+    interval34 <- hpd(ratio_sample, prob=0.95)
+    PI_rate34_i <- as.integer((ratio_star >= interval34[1]) && (ratio_star <= interval34[2]))
+    PI_rate34 <- PI_rate34 + PI_rate34_i
+  }
+  PI_prec11 <- PI_rate11 / nrow(sim_dat2)
+  PI_prec12 <- PI_rate12 / nrow(sim_dat2)
+  PI_prec13 <- PI_rate13 / nrow(sim_dat2)
+  PI_prec14 <- PI_rate14 / nrow(sim_dat2)
+  PI_prec15 <- PI_rate15 / nrow(sim_dat2)
+  PI_prec21 <- PI_rate21 / nrow(sim_dat2)
+  PI_prec22 <- PI_rate22 / nrow(sim_dat2)
+  PI_prec23 <- PI_rate23 / nrow(sim_dat2)
+  PI_prec24 <- PI_rate24 / nrow(sim_dat2)
+  PI_prec25 <- PI_rate25 / nrow(sim_dat2)
+  PI_prec31 <- PI_rate31 / nrow(sim_dat2)
+  PI_prec32 <- PI_rate32 / nrow(sim_dat2)
+  PI_prec33 <- PI_rate33 / nrow(sim_dat2)
+  PI_prec34 <- PI_rate34 / nrow(sim_dat2)
+  
+
+  # ------------ Record a single row ------------
+  out <- data.frame(
+    seed = seed,
+    w1 = fixed_weights[1], w2 = fixed_weights[2], w3 = fixed_weights[3],
+    beta_conv = beta_conv_flag, w_conv = w_conv_flag,
+    beta_val = beta_best_val,
+    PI11_coverage <- PI_prec11,
+    PI12_coverage <- PI_prec12,
+    PI13_coverage <- PI_prec13,
+    PI14_coverage <- PI_prec14,
+    PI15_coverage <- PI_prec15,
+    PI21_coverage <- PI_prec21,
+    PI22_coverage <- PI_prec22,
+    PI23_coverage <- PI_prec23,
+    PI24_coverage <- PI_prec24,
+    PI25_coverage <- PI_prec25,
+    PI31_coverage <- PI_prec31,
+    PI32_coverage <- PI_prec32,
+    PI33_coverage <- PI_prec33,
+    PI34_coverage <- PI_prec34
+  )
+
+  # add beta_hat (b1..b14), var (v1..v14), cover (c1..c14)
+  names_beta <- paste0("b", 1:14)
+  names_var  <- paste0("v", 1:14)
+  names_cov  <- paste0("c", 1:14)
+
+  out[ names_beta ] <- as.list(beta_hat)
+  out[ names_var  ] <- as.list(diag(Vhat))
+  out[ names_cov  ] <- as.list(cover)
+
+  write_row(out, out_csv)
+  invisible(out)
+}
+```
+
+
