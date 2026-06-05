@@ -384,7 +384,7 @@ run_one_sim <- function(seed, out_csv, J, Time) {
   sim_dat <- datasets$sim_dat1
   sim_dat2 <- datasets$sim_dat2
 
-  fixed_weights <- c(1,1,1)  # start equal
+  fixed_weights <- c(1/3,1/3,1/3)  # start equal
   beta_best_val <- NA_real_
   beta_hat <- rep(NA_real_, 14)
   beta_conv_flag <- NA_integer_
@@ -421,9 +421,9 @@ run_one_sim <- function(seed, out_csv, J, Time) {
     fixed_weights <- softmax3(ow$par[1], ow$par[2])
     
     if (w_conv_flag != 1){
-      var_ori <- var_sandwich_cached(c(1,1,1), cache)
+      var_ori <- var_sandwich_cached(c(1/3,1/3,1/3), cache)
       if (ow$value >= sum(diag(var_ori))){
-        fixed_weights <- c(1,1,1)
+        fixed_weights <- c(1/3,1/3,1/3)
       }
     }
   }
