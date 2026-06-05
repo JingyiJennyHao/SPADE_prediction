@@ -20,6 +20,18 @@ true_beta <- c(2,0.5,0.5, 1,1,1, 0.5, 0.3,0.3,0.3, 0.2,0.2,0.2, 6)
 #%%
 write_row <- function(df_row, file) {
   stopifnot(is.data.frame(df_row), nrow(df_row) == 1)
+
+  lock_dir <- paste0(file, ".lock")
+  start <- Sys.time()
+
+  while (!dir.create(lock_dir, showWarnings = FALSE)) {
+    if (as.numeric(difftime(Sys.time(), start, units = "secs")) > 600) {
+      stop("Timed out waiting for CSV lock.")
+    }
+    Sys.sleep(1)
+  }
+  on.exit(unlink(lock_dir, recursive = TRUE), add = TRUE)
+
   if (!file.exists(file)) {
     write.table(df_row, file, sep = ",", row.names = FALSE, col.names = TRUE)
   } else {
