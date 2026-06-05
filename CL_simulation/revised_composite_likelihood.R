@@ -377,10 +377,9 @@ PI_binomial <- function(alpha, N, p){
 
 ## -------------------- One simulation --------------------
 #%%
-run_one_sim <- function(seed, out_csv) {
+run_one_sim <- function(seed, out_csv, J, Time) {
   set.seed(seed)
-  Time <- 3
-  J <- 200
+  
   datasets <- gen_simdata(J, true_beta = true_beta, seed = seed)
   sim_dat <- datasets$sim_dat1
   sim_dat2 <- datasets$sim_dat2
@@ -446,7 +445,7 @@ run_one_sim <- function(seed, out_csv) {
   
   # inference on beta
   cache_final <- precompute_grad_hess(beta_hat, sim_dat, J, Time)
-  Vhat <- var_sandwich_cached(fixed_weights, cache_final)
+  Vhat <- var_sandwich_cached(fixed_weights, cache_final)/J
   se   <- sqrt(diag(Vhat))
   upper <- beta_hat + 1.96 * se
   lower <- beta_hat - 1.96 * se
@@ -707,5 +706,7 @@ seed    <- ifelse(length(args) >= 2, as.integer(args[2]), {
   ji <- Sys.getenv("LSB_JOBINDEX", unset = NA)
   if (!is.na(ji) && nzchar(ji)) 1000 + as.integer(ji) else 12345
 })
+J <- 200
+Time <- 3
 cat(sprintf("Running seed=%d, writing to %s\n", seed, out_csv))
-run_one_sim(seed, out_csv)
+run_one_sim(seed, out_csv, J, Time)
