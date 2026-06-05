@@ -188,15 +188,24 @@ precompute_grad_hess <- function(beta, sim_dat, J, Time) {
 
 # Var = H^-1 J H^-1
 
+# J_mat_cached <- function(weights, cache) {
+#   p <- cache$p
+#   J <- cache$J
+#   U <- matrix(0, p, J)
+#   for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights
+#   g_bar <- rowMeans(U)
+#   # 210 is the number of hospitals
+#   res <- g_bar %*% t(g_bar)*210
+#   return(res)
+# }
+
+# revised J
 J_mat_cached <- function(weights, cache) {
   p <- cache$p
   J <- cache$J
-  num_H <- cache$J
   U <- matrix(0, p, J)
-  for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights  # g_j in column j
-  g_bar <- rowMeans(U)                # (1/J) * sum_j g_j
-  res   <- g_bar%*%t(g_bar)*num_H     # g_bar %*% t(g_bar)
-  return(res)
+  for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights
+  return(U %*% t(U) / J)
 }
 
 H_mat_cached <- function(weights, cache) {
