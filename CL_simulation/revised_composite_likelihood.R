@@ -711,14 +711,17 @@ run_one_sim <- function(seed, out_csv, J, Time) {
 
 
 args <- commandArgs(trailingOnly = TRUE)
-# usage: Rscript run_one_sim.R <out_csv> <seed>
+
+# usage: Rscript revised_composite_likelihood.R <out_csv> <seed> <J>
 out_csv <- ifelse(length(args) >= 1, args[1], "sim_results_0501_200.csv")
-seed    <- ifelse(length(args) >= 2, as.integer(args[2]), {
-  # try LSF job index, else default
+
+seed <- ifelse(length(args) >= 2, as.integer(args[2]), {
   ji <- Sys.getenv("LSB_JOBINDEX", unset = NA)
   if (!is.na(ji) && nzchar(ji)) 1000 + as.integer(ji) else 12345
 })
-J <- 200
+
+J <- ifelse(length(args) >= 3, as.integer(args[3]), 200)
 Time <- 3
-cat(sprintf("Running seed=%d, writing to %s\n", seed, out_csv))
+
+cat(sprintf("Running seed=%d, J=%d, writing to %s\n", seed, J, out_csv))
 run_one_sim(seed, out_csv, J, Time)
