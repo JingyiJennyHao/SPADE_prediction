@@ -179,3 +179,27 @@ rm -rf results/round05
 ```
 
 Only remove result folders you intentionally want to recompute.
+
+## 7. Save weight and beta result
+
+```bash
+module load R/4.4
+cd ~/SPADE_prediction/CL_simulation/hpc
+Rscript -e '
+files <- sort(Sys.glob("results/round*/best_beta_round*.rds"))
+x <- lapply(files, readRDS)
+names(x) <- basename(files)
+saveRDS(x, "results/all_best_beta_results.rds")
+cat("Saved", length(x), "beta RDS files to results/all_best_beta_results.rds\n")
+'
+```
+
+```bash
+Rscript -e '
+files <- sort(Sys.glob("results/round*/best_weight_round*.rds"))
+x <- lapply(files, readRDS)
+names(x) <- basename(files)
+saveRDS(x, "results/all_best_weight_results.rds")
+cat("Saved", length(x), "weight RDS files to results/all_best_weight_results.rds\n")
+'
+```
