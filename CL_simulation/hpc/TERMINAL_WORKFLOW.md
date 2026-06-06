@@ -27,7 +27,7 @@ chmod +x run_cl_loop.sh
 
 ## 2. Tiny Smoke Test
 
-Use only 1 round, 2 beta starts, 2 weight starts, and a smaller `optim(maxit)` so the test does not run for hours:
+Use only 1 round, 2 beta starts, 2 weight starts, and a smaller `optim(maxit)` so the test does not run for hours. The minimum-result thresholds default to the number of submitted tasks when fewer than 100 tasks are submitted:
 
 ```bash
 ROUNDS=1 BETA_TASKS=2 WEIGHT_TASKS=2 OPTIM_MAXIT=1000 ./run_cl_loop.sh
@@ -47,13 +47,14 @@ results/round01/weight_results_round01.csv
 results/round01/best_beta_round01.rds
 results/round01/best_weight_round01.rds
 results/round01/logs/
+results/run_cl_loop_controller.log
 ```
 
 The beta CSV should have 2 result rows. The weight CSV should have 2 result rows.
 
 ## 3. Full Run
 
-The production defaults are 20 rounds, 100 beta starts per round, 100 weight starts per round, and `optim(maxit=8000)`:
+The production defaults are 20 rounds, 130 beta starts per round, 130 weight starts per round, minimum 100 finished rows per stage, and `optim(maxit=8000)`. The controller moves forward as soon as each stage has enough CSV rows and cancels any remaining array elements.
 
 ```bash
 ./run_cl_loop.sh
@@ -62,7 +63,7 @@ The production defaults are 20 rounds, 100 beta starts per round, 100 weight sta
 Equivalent explicit command:
 
 ```bash
-ROUNDS=20 BETA_TASKS=100 WEIGHT_TASKS=100 OPTIM_MAXIT=8000 ./run_cl_loop.sh
+ROUNDS=20 BETA_TASKS=130 BETA_MIN_RESULTS=100 WEIGHT_TASKS=130 WEIGHT_MIN_RESULTS=100 OPTIM_MAXIT=8000 ./run_cl_loop.sh
 ```
 
 ## 4. Useful Overrides
@@ -77,6 +78,18 @@ Use a different result folder:
 
 ```bash
 RESULTS_ROOT=$PWD/results_test ROUNDS=1 BETA_TASKS=2 WEIGHT_TASKS=2 OPTIM_MAXIT=1000 ./run_cl_loop.sh
+```
+
+Submit 130 starts but move forward once 100 results are written:
+
+```bash
+BETA_TASKS=130 BETA_MIN_RESULTS=100 WEIGHT_TASKS=130 WEIGHT_MIN_RESULTS=100 ./run_cl_loop.sh
+```
+
+Change how often the controller reports progress:
+
+```bash
+POLL_SECONDS=30 ./run_cl_loop.sh
 ```
 
 Use a different R module or R library path:
@@ -118,6 +131,29 @@ Inspect logs:
 ```bash
 ls results/round01/logs
 tail results/round01/logs/*.err
+```
+
+Each stage now has one shared `.out` and one shared `.err` per array job, not one file per array element:
+
+```text
+results/round01/logs/beta_<jobid>.out
+results/round01/logs/beta_<jobid>.err
+results/round01/logs/weight_<jobid>.out
+results/round01/logs/weight_<jobid>.err
+```
+
+The controller progress log is:
+
+```bash
+tail -f results/run_cl_loop_controller.log
+```
+
+Example controller messages:
+
+```text
+Round 1 beta-step: 72/130 results written; need 100 to move forward.
+Round 1 beta-step: get result threshold reached (100/130); moving forward.
+Round 1: summarizing beta results from results/round01/beta_results_round01.csv.
 ```
 
 ## 6. Resume or Rerun
