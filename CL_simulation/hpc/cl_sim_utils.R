@@ -297,7 +297,7 @@ precompute_grad_hess <- function(beta, sim_dat, J, Time) {
 # }
 
 # revised J
-J_mat_cached <- function(weights, cache) {
+j_mat_cached <- function(weights, cache) {
   p <- cache$p
   J <- cache$J
   U <- matrix(0, p, J)
