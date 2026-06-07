@@ -31,6 +31,6 @@ bsub -J "cl_sim[${START}-${END}]" \
 ```
 ## simulation 2: weights convergence
 
-read the 
+All files are in the folder hpc
 
 
