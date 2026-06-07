@@ -140,11 +140,8 @@ j_mat_cached <- function(weights, cache) {
   p <- cache$p
   J <- cache$J
   U <- matrix(0, p, J)
-  for (j in seq_len(J)) {
-    U[, j] <- cache$G[[j]] %*% weights
-  }
-  g_bar <- rowMeans(U)
-  g_bar %*% t(g_bar)
+  for (j in 1:J) U[, j] <- cache$G[[j]] %*% weights
+  return(U %*% t(U) / J)
 }
 
 h_mat_cached <- function(weights, cache) {
