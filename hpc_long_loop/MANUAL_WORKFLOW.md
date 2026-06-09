@@ -12,7 +12,7 @@ Use `run_loop.sh` when you want the full beta-weight loop to run automatically.
 This command runs up to 20 rounds and stops early if the weight convergence tolerance is reached.
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 chmod +x run_loop.sh submit_stage1_manual.sh submit_stage2_manual.sh
 MAX_ROUNDS=20 ./run_loop.sh
 ```
@@ -50,7 +50,7 @@ To resume from a later round, keep the final maximum round number and set `START
 For example, resume at round 5 and run through at most round 20:
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 START_ROUND=5 MAX_ROUNDS=20 ./run_loop.sh
 ```
 
@@ -59,7 +59,7 @@ It deletes task-level `runs/task_*.rds` files after each stage is summarized.
 If you are debugging and want to keep every task-level RDS file:
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 KEEP_RUN_RDS=1 MAX_ROUNDS=20 ./run_loop.sh
 ```
 
@@ -68,7 +68,7 @@ Example: 130 starts, with 30 random starts and 100 fixed starts, all hospitals.
 When `BETA_REF_FILE` is not set, the non-random starts use the fixed starting value.
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 chmod +x submit_stage1_manual.sh submit_stage2_manual.sh
 GROUP_COUNT=210 TOTAL_TASKS=130 RANDOM_TASKS=30 JOB_NAME=s1_round1 ./submit_stage1_manual.sh
 ```
@@ -81,7 +81,7 @@ This writes:
 After the jobs finish, collect one review CSV:
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 module load R/4.4
 export R_LIBS_USER="$HOME/R/x86_64-pc-linux-gnu-library/4.4"
 Rscript collect_stage1_results.R \
@@ -100,10 +100,10 @@ Rscript stage1_summarize.R \
 For a later beta round, use the previous round's beta and weights. The first 30 tasks are still random starts, and the other 100 tasks start near the previous beta estimate:
 
 ```bash
-cd ~/SPADE/hpc_long_loop
-RESULTS_DIR=$HOME/SPADE/hpc_long_loop/results/manual_stage1_round2 \
-BETA_REF_FILE=$HOME/SPADE/hpc_long_loop/results/manual_stage1/summary/beta_hat.rds \
-WEIGHTS_FILE=$HOME/SPADE/hpc_long_loop/results/manual_stage2/summary/weights_hat.rds \
+cd ~/SPADE_prediction/hpc_long_loop
+RESULTS_DIR=$HOME/SPADE_prediction/hpc_long_loop/results/manual_stage1_round2 \
+BETA_REF_FILE=$HOME/SPADE_prediction/hpc_long_loop/results/manual_stage1/summary/beta_hat.rds \
+WEIGHTS_FILE=$HOME/SPADE_prediction/hpc_long_loop/results/manual_stage2/summary/weights_hat.rds \
 GROUP_COUNT=210 TOTAL_TASKS=130 RANDOM_TASKS=30 JOB_NAME=s1_round2 ./submit_stage1_manual.sh
 ```
 
@@ -111,15 +111,15 @@ GROUP_COUNT=210 TOTAL_TASKS=130 RANDOM_TASKS=30 JOB_NAME=s1_round2 ./submit_stag
 Example: 130 starts using a chosen `beta_hat.rds`.
 
 ```bash
-cd ~/SPADE/hpc_long_loop
-BETA_FILE=$HOME/SPADE/hpc_long_loop/results/manual_stage1/summary/beta_hat.rds \
+cd ~/SPADE_prediction/hpc_long_loop
+BETA_FILE=$HOME/SPADE_prediction/hpc_long_loop/results/manual_stage1/summary/beta_hat.rds \
 GROUP_COUNT=210 TOTAL_TASKS=130 JOB_NAME=s2_round1 ./submit_stage2_manual.sh
 ```
 
 Then collect one review CSV:
 
 ```bash
-cd ~/SPADE/hpc_long_loop
+cd ~/SPADE_prediction/hpc_long_loop
 module load R/4.4
 export R_LIBS_USER="$HOME/R/x86_64-pc-linux-gnu-library/4.4"
 Rscript collect_stage2_results.R \

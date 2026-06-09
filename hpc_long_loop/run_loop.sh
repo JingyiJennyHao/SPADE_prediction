@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_DIR="${PROJECT_DIR:-$HOME/SPADE/hpc_long_loop}"
+PROJECT_DIR="${PROJECT_DIR:-$HOME/SPADE_prediction/hpc_long_loop}"
 RESULTS_ROOT="${RESULTS_ROOT:-$PROJECT_DIR/results/loop}"
 GROUP_COUNT="${GROUP_COUNT:-210}"
 
@@ -212,6 +212,7 @@ submit_stage1_round() {
   stage1_dir="$(stage1_round_dir "${round}")"
 
   RESULTS_DIR="${stage1_dir}" \
+  PROJECT_DIR="${PROJECT_DIR}" \
   GROUP_COUNT="${GROUP_COUNT}" \
   TOTAL_TASKS="${STAGE1_TOTAL_TASKS}" \
   RANDOM_TASKS="${STAGE1_RANDOM_TASKS}" \
@@ -229,6 +230,7 @@ submit_stage2_round() {
   stage2_dir="$(stage2_round_dir "${round}")"
 
   RESULTS_DIR="${stage2_dir}" \
+  PROJECT_DIR="${PROJECT_DIR}" \
   GROUP_COUNT="${GROUP_COUNT}" \
   TOTAL_TASKS="${STAGE2_TOTAL_TASKS}" \
   JOB_NAME="s2_round$(printf "%02d" "${round}")" \

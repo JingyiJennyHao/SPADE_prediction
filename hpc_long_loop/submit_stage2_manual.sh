@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_DIR="${PROJECT_DIR:-$HOME/SPADE/hpc_long_loop}"
+PROJECT_DIR="${PROJECT_DIR:-$HOME/SPADE_prediction/hpc_long_loop}"
 DATA_PATH="${DATA_PATH:-$HOME/SPADE/dat_spade_yr_0212.RDS}"
 RESULTS_DIR="${RESULTS_DIR:-$PROJECT_DIR/results/manual_stage2}"
 GROUP_COUNT="${GROUP_COUNT:-210}"
