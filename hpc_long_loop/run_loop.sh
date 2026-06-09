@@ -5,11 +5,11 @@ PROJECT_DIR="${PROJECT_DIR:-$HOME/SPADE/hpc_long_loop}"
 RESULTS_ROOT="${RESULTS_ROOT:-$PROJECT_DIR/results/loop}"
 GROUP_COUNT="${GROUP_COUNT:-210}"
 
-STAGE1_TOTAL_TASKS="${STAGE1_TOTAL_TASKS:-240}"
-STAGE1_RANDOM_TASKS="${STAGE1_RANDOM_TASKS:-120}"
+STAGE1_TOTAL_TASKS="${STAGE1_TOTAL_TASKS:-130}"
+STAGE1_RANDOM_TASKS="${STAGE1_RANDOM_TASKS:-30}"
 STAGE2_TOTAL_TASKS="${STAGE2_TOTAL_TASKS:-15}"
 
-MIN_STAGE1_RESULTS="${MIN_STAGE1_RESULTS:-200}"
+MIN_STAGE1_RESULTS="${MIN_STAGE1_RESULTS:-100}"
 MIN_STAGE2_RESULTS="${MIN_STAGE2_RESULTS:-10}"
 
 MAX_ROUNDS="${MAX_ROUNDS:-50}"
@@ -17,6 +17,7 @@ START_ROUND="${START_ROUND:-1}"
 WEIGHT_TOL="${WEIGHT_TOL:-1e-7}"
 POLL_SECONDS="${POLL_SECONDS:-300}"
 POST_KILL_WAIT_SECONDS="${POST_KILL_WAIT_SECONDS:-20}"
+KEEP_RUN_RDS="${KEEP_RUN_RDS:-0}"
 
 R_MODULE="${R_MODULE:-R/4.4}"
 R_LIBS_USER_PATH="${R_LIBS_USER_PATH:-$HOME/R/x86_64-pc-linux-gnu-library/4.4}"
@@ -99,6 +100,31 @@ require_min_results() {
   log "${label}: found ${actual_count} result files, meeting minimum ${min_count}."
 }
 
+cleanup_run_rds() {
+  local target_dir="$1"
+  local label="$2"
+
+  if [[ "${KEEP_RUN_RDS}" == "1" ]]; then
+    log "${label}: KEEP_RUN_RDS=1, keeping task-level RDS files in ${target_dir}."
+    return
+  fi
+
+  if [[ ! -d "${target_dir}" ]]; then
+    log "${label}: run directory ${target_dir} does not exist, nothing to clean."
+    return
+  fi
+
+  local rds_count
+  rds_count=$(count_rds "${target_dir}")
+  if (( rds_count == 0 )); then
+    log "${label}: no task-level RDS files to clean in ${target_dir}."
+    return
+  fi
+
+  find "${target_dir}" -maxdepth 1 -type f -name '*.rds' -delete
+  log "${label}: deleted ${rds_count} task-level RDS files from ${target_dir}."
+}
+
 job_active() {
   local job_id="$1"
   if bjobs -noheader "${job_id}" >/dev/null 2>&1; then
@@ -119,6 +145,8 @@ wait_until_ready_or_finished() {
   local expected_count="$3"
   local min_count="$4"
   local label="$5"
+
+  log "${label}: waiting for at least ${min_count}/${expected_count} result files from job ${job_id}."
 
   while true; do
     local current_count
@@ -262,9 +290,11 @@ log "Project directory: ${PROJECT_DIR}"
 log "Results root: ${RESULTS_ROOT}"
 log "Group count: ${GROUP_COUNT}"
 log "Stage 1 tasks per round: ${STAGE1_TOTAL_TASKS}"
+log "Stage 1 random tasks per round: ${STAGE1_RANDOM_TASKS}"
 log "Stage 1 minimum results: ${MIN_STAGE1_RESULTS}"
 log "Stage 2 tasks per round: ${STAGE2_TOTAL_TASKS}"
 log "Stage 2 minimum results: ${MIN_STAGE2_RESULTS}"
+log "Keep task-level RDS files: ${KEEP_RUN_RDS}"
 log "Weight convergence tolerance: ${WEIGHT_TOL}"
 log "Poll seconds: ${POLL_SECONDS}"
 log "Post-kill wait seconds: ${POST_KILL_WAIT_SECONDS}"
@@ -314,6 +344,7 @@ for ((round = START_ROUND; round <= MAX_ROUNDS; round++)); do
 
   [[ -f "${curr_beta_file}" ]] || die "Round ${round}: stage 1 summary did not create ${curr_beta_file}."
   log "Round ${round}: saved beta summary to ${curr_beta_file}"
+  cleanup_run_rds "$(stage1_round_dir "${round}")/runs" "Round ${round} stage 1"
 
   log "========== Round ${round}: Stage 2 =========="
 
@@ -336,6 +367,7 @@ for ((round = START_ROUND; round <= MAX_ROUNDS; round++)); do
 
   [[ -f "${curr_weight_file}" ]] || die "Round ${round}: stage 2 summary did not create ${curr_weight_file}."
   log "Round ${round}: saved weight summary to ${curr_weight_file}"
+  cleanup_run_rds "$(stage2_round_dir "${round}")/runs" "Round ${round} stage 2"
 
   if [[ -n "${prev_weight_file}" ]]; then
     diff_val="$(weight_diff "${prev_weight_file}" "${curr_weight_file}")"
