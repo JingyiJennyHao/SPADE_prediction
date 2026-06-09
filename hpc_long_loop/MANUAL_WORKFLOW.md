@@ -108,12 +108,12 @@ GROUP_COUNT=210 TOTAL_TASKS=130 RANDOM_TASKS=30 JOB_NAME=s1_round2 ./submit_stag
 ```
 
 ## Stage 2
-Example: 10 starts using a chosen `beta_hat.rds`.
+Example: 15 starts using a chosen `beta_hat.rds`.
 
 ```bash
 cd ~/SPADE/hpc_long_loop
 BETA_FILE=$HOME/SPADE/hpc_long_loop/results/manual_stage1/summary/beta_hat.rds \
-GROUP_COUNT=210 TOTAL_TASKS=10 JOB_NAME=s2_round1 ./submit_stage2_manual.sh
+GROUP_COUNT=210 TOTAL_TASKS=15 JOB_NAME=s2_round1 ./submit_stage2_manual.sh
 ```
 
 Then collect one review CSV:
