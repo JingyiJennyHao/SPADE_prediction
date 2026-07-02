@@ -213,10 +213,6 @@ summarize_iteration() {
   log "Iteration ${iter}: starting GMM summary."
   load_r_env
 
-  Rscript collect_gmm_results.R \
-    --input-dir "${iter_dir}/runs" \
-    --out-csv "${iter_dir}/summary/gmm_iter$(printf "%02d" "${iter}").csv"
-
   Rscript gmm_summarize.R \
     --input-dir "${iter_dir}/runs" \
     --out "${iter_dir}/summary/beta_hat$(printf "%02d" "${iter}").rds"
