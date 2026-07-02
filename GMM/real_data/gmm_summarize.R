@@ -34,45 +34,26 @@ if (length(files) == 0L) {
 }
 
 results <- lapply(files, readRDS)
-values <- vapply(results, function(item) item$value %||% item$objective_value %||% Inf, numeric(1))
-converged_idx <- vapply(
-  results,
-  function(item) as.integer(item$convergence) == 0L,
-  logical(1)
-) & is.finite(values)
+names(results) <- basename(files)
 
-if (!any(converged_idx)) {
-  stop("No converged GMM results were found.", call. = FALSE)
-}
+flatten_gmm <- function(item, file_name) {
+  par_vec <- item$par %||% item$beta_hat %||% rep(NA_real_, 18)
+  start_vec <- item$start %||% rep(NA_real_, length(par_vec))
+  beta0_vec <- item$beta0 %||% rep(NA_real_, length(par_vec))
+  objective_value <- item$value %||% item$objective_value %||% NA_real_
 
-converged <- results[converged_idx]
-converged_values <- values[converged_idx]
-best_idx <- which.min(converged_values)
-best <- converged[[best_idx]]
-beta_hat <- best$par %||% best$beta_hat
+  row <- data.frame(
+    file = basename(file_name),
+    task_id = item$task_id %||% NA_integer_,
+    seed = item$seed %||% NA_integer_,
+    groups = item$groups %||% NA_integer_,
+    convergence = item$convergence %||% NA_integer_,
+    value = objective_value,
+    initial_value = if (inherits(item$initial_value, "try-error")) NA_real_ else (item$initial_value %||% NA_real_),
+    message = item$message %||% "",
+    beta0_file = item$beta0_file %||% "",
+    stringsAsFactors = FALSE
+  )
 
-summary_payload <- list(
-  stage = "gmm_summary",
-  files = basename(files),
-  converged_files = basename(files[converged_idx]),
-  best_file = basename(files[converged_idx][best_idx]),
-  beta_hat = as.numeric(beta_hat),
-  beta_best_val = converged_values[[best_idx]],
-  objective_value = converged_values[[best_idx]],
-  best_seed = best$seed,
-  best_task_id = best$task_id,
-  groups = best$groups,
-  beta0 = best$beta0,
-  beta0_file = best$beta0_file,
-  start = best$start,
-  start_scale = best$start_scale,
-  ridge = best$ridge,
-  maxit = best$maxit,
-  center_v = best$center_v,
-  V = best$V,
-  W = best$W,
-  S0 = best$S0
-)
-
-save_result(output_path, summary_payload)
-cat(sprintf("Saved best GMM beta from %s to %s\n", summary_payload$best_file, output_path))
+  for (i in seq_along(beta0_vec)) {
+    row[[sprintf("beta0_%02d", i)]] <- as.numeric(beta0
