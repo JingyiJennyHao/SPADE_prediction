@@ -407,7 +407,7 @@ run_one_sim <- function(seed, out_csv) {
     for (rep in 1:1) {
       stpt <- beta_old + rnorm(14,0,0.1)
       #stpt <- c(runif(13, min=0, max=1), 6)
-      fit <- optim(stpt, gmm_obj, sim_dat = sim_dat, W_hat = W_current, Time = 3, control = list(maxit = 5000))
+      fit <- optim(stpt, gmm_obj, sim_dat = sim_dat, W_hat = W_current, Time = 3, control = list(maxit = 8000))
       optimal_list[[rep]] <- list(value = fit$value, par = fit$par, convergence = fit$convergence)
     }
     
