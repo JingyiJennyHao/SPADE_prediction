@@ -48,22 +48,71 @@ softmax3 <- function(a1, a2) {
 }
 
 gen_simdata <- function(J, true_beta = true_beta, seed = seed) {
+
   set.seed(seed)
+
   Time <- 3
+
   mu <- c(1, 2)
+
   A <- diag(c(0.7, 0.5))
-  Sigma_eps <- matrix(c(0.2, 0.1, 0.1, 0.2), 2, 2)
+
+  Sigma_eps <- matrix(
+    c(
+      0.2, 0.1,
+      0.1, 0.2
+    ),
+    2, 2
+  )
 
   hos.Xi <- vector("list", J)
+
   for (j in 1:J) {
-    X <- matrix(NA, nrow = Time, ncol = 2)
-    X[1, ] <- mu
+
+    X <- matrix(
+      NA,
+      nrow = Time,
+      ncol = 2
+    )
+
+    ## ---------------------------------------
+    ## OLD:
+    ## X[1, ] <- mu
+    ##
+    ## NEW:
+    ## allow between-subject variation at t=1
+    ## ---------------------------------------
+
+    X[1, ] <- MASS::mvrnorm(
+      n = 1,
+      mu = mu,
+      Sigma = Sigma_eps
+    )
+
     for (t in 2:Time) {
-      eps <- mvrnorm(1, mu = c(0, 0), Sigma = Sigma_eps)
-      X[t, ] <- mu + A %*% (X[t - 1, ] - mu) + eps
+
+      eps <- MASS::mvrnorm(
+        n = 1,
+        mu = c(0, 0),
+        Sigma = Sigma_eps
+      )
+
+      X[t, ] <- mu +
+        A %*% (X[t - 1, ] - mu) +
+        eps
     }
-    hos.Xi[[j]] <- rbind(x0 = 1, x1 = X[, 1], x2 = X[, 2])
+
+    hos.Xi[[j]] <- rbind(
+      x0 = 1,
+      x1 = X[, 1],
+      x2 = X[, 2]
+    )
   }
+
+  ## ---------------------------------------
+  ## everything below stays exactly the same
+  ## as your original gen_simdata()
+  ## ---------------------------------------
 
   true_beta1 <- true_beta[1:3]
   true_beta2 <- true_beta[4:6]
@@ -72,36 +121,64 @@ gen_simdata <- function(J, true_beta = true_beta, seed = seed) {
   true_beta5 <- true_beta[11:13]
   true_beta6 <- true_beta[14]
 
-  sim_dat1 <- matrix(NA, nrow = J * Time, ncol = 24)
-  colnames(sim_dat1) <- c(
-    "j", "t", "Nj", "pj1", "pj2", "pj3", "pj4", "pj5", "pj6",
-    "nj1", "nj2", "nj3", "nj4", "nj5", "nj6",
-    "a1", "a2", "a3", "a4", "a5", "a6", "x0", "x1", "x2"
+  sim_dat1 <- matrix(
+    NA,
+    nrow = J * Time,
+    ncol = 24
   )
+
+  colnames(sim_dat1) <- c(
+    "j", "t", "Nj",
+    "pj1", "pj2", "pj3", "pj4", "pj5", "pj6",
+    "nj1", "nj2", "nj3", "nj4", "nj5", "nj6",
+    "a1", "a2", "a3", "a4", "a5", "a6",
+    "x0", "x1", "x2"
+  )
+
   row_idx <- 1
 
   for (j in 1:J) {
+
     Nj1 <- sample(100:2000, 1)
     Nj2 <- sample(100:2000, 1)
     Nj3 <- sample(100:2000, 1)
+
     Xj1 <- hos.Xi[[j]][, 1]
     Xj2 <- hos.Xi[[j]][, 2]
     Xj3 <- hos.Xi[[j]][, 3]
 
     alpha1 <- c(
-      exp(true_beta1 %*% Xj1), exp(true_beta2 %*% Xj1), exp(true_beta3),
-      exp(true_beta4 %*% Xj1), exp(true_beta5 %*% Xj1), exp(true_beta6)
-    )
-    alpha2 <- c(
-      exp(true_beta1 %*% Xj2), exp(true_beta2 %*% Xj2), exp(true_beta3),
-      exp(true_beta4 %*% Xj2), exp(true_beta5 %*% Xj2), exp(true_beta6)
-    )
-    alpha3 <- c(
-      exp(true_beta1 %*% Xj3), exp(true_beta2 %*% Xj3), exp(true_beta3),
-      exp(true_beta4 %*% Xj3), exp(true_beta5 %*% Xj3), exp(true_beta6)
+      exp(true_beta1 %*% Xj1),
+      exp(true_beta2 %*% Xj1),
+      exp(true_beta3),
+      exp(true_beta4 %*% Xj1),
+      exp(true_beta5 %*% Xj1),
+      exp(true_beta6)
     )
 
-    p_j <- LaplacesDemon::rdirichlet(1, c(alpha1, alpha2, alpha3))
+    alpha2 <- c(
+      exp(true_beta1 %*% Xj2),
+      exp(true_beta2 %*% Xj2),
+      exp(true_beta3),
+      exp(true_beta4 %*% Xj2),
+      exp(true_beta5 %*% Xj2),
+      exp(true_beta6)
+    )
+
+    alpha3 <- c(
+      exp(true_beta1 %*% Xj3),
+      exp(true_beta2 %*% Xj3),
+      exp(true_beta3),
+      exp(true_beta4 %*% Xj3),
+      exp(true_beta5 %*% Xj3),
+      exp(true_beta6)
+    )
+
+    p_j <- LaplacesDemon::rdirichlet(
+      1,
+      c(alpha1, alpha2, alpha3)
+    )
+
     p_j1 <- p_j[1:6]
     p_j2 <- p_j[7:12]
     p_j3 <- p_j[13:18]
@@ -110,30 +187,85 @@ gen_simdata <- function(J, true_beta = true_beta, seed = seed) {
     p_j2_norm <- p_j2 / sum(p_j2)
     p_j3_norm <- p_j3 / sum(p_j3)
 
-    n_j1 <- rmultinom(1, size = Nj1, prob = p_j1)
-    n_j2 <- rmultinom(1, size = Nj2, prob = p_j2)
-    n_j3 <- rmultinom(1, size = Nj3, prob = p_j3)
+    n_j1 <- rmultinom(
+      1,
+      size = Nj1,
+      prob = p_j1
+    )
 
-    sim_dat1[row_idx, ] <- c(j, 1, Nj1, p_j1_norm, n_j1, alpha1, Xj1)
+    n_j2 <- rmultinom(
+      1,
+      size = Nj2,
+      prob = p_j2
+    )
+
+    n_j3 <- rmultinom(
+      1,
+      size = Nj3,
+      prob = p_j3
+    )
+
+    sim_dat1[row_idx, ] <- c(
+      j, 1, Nj1,
+      p_j1_norm,
+      n_j1,
+      alpha1,
+      Xj1
+    )
+
     row_idx <- row_idx + 1
-    sim_dat1[row_idx, ] <- c(j, 2, Nj2, p_j2_norm, n_j2, alpha2, Xj2)
+
+    sim_dat1[row_idx, ] <- c(
+      j, 2, Nj2,
+      p_j2_norm,
+      n_j2,
+      alpha2,
+      Xj2
+    )
+
     row_idx <- row_idx + 1
-    sim_dat1[row_idx, ] <- c(j, 3, Nj3, p_j3_norm, n_j3, alpha3, Xj3)
+
+    sim_dat1[row_idx, ] <- c(
+      j, 3, Nj3,
+      p_j3_norm,
+      n_j3,
+      alpha3,
+      Xj3
+    )
+
     row_idx <- row_idx + 1
   }
 
   set.seed(seed + 5000)
 
   sim_dat2 <- sim_dat1
+
   for (r in 1:nrow(sim_dat2)) {
+
     Nj_new <- sample(100:2000, 1)
-    p_norm <- as.numeric(sim_dat1[r, paste0("pj", 1:6)])
-    n_new <- as.numeric(rmultinom(1, size = Nj_new, prob = p_norm))
+
+    p_norm <- as.numeric(
+      sim_dat1[r, paste0("pj", 1:6)]
+    )
+
+    n_new <- as.numeric(
+      rmultinom(
+        1,
+        size = Nj_new,
+        prob = p_norm
+      )
+    )
+
     sim_dat2[r, "Nj"] <- Nj_new
     sim_dat2[r, paste0("nj", 1:6)] <- n_new
   }
 
-  list(sim_dat1 = sim_dat1, sim_dat2 = sim_dat2)
+  return(
+    list(
+      sim_dat1 = sim_dat1,
+      sim_dat2 = sim_dat2
+    )
+  )
 }
 
 ll_row <- function(j, t, beta, sim_dat) {
