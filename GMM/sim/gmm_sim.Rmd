@@ -319,6 +319,29 @@ W_hat_fun <- function(beta, sim_dat, Time = 3, ridge = 1e-6) {
   return(W_hat)
 }
 
+W_hat_fun_inference <- function(beta, sim_dat, Time = 3) {
+
+  j_list <- sort(unique(sim_dat[, "j"]))
+
+  G <- sapply(
+    j_list,
+    function(j) {
+      score_stack(
+        j,
+        beta,
+        sim_dat,
+        Time = Time
+      )
+    }
+  )
+
+  G <- t(G)
+
+  S_hat <- cov(G)
+
+  solve(S_hat)
+}
+
 G_hat_fun <- function(beta, sim_dat, Time = 3){
   j_list <- sort(unique(sim_dat[, "j"]))
   p <- length(beta)
@@ -549,7 +572,7 @@ run_one_sim <- function(seed, out_csv) {
   beta_hat <- beta_old
   # inference on beta
   G_hat <- G_hat_fun(beta_hat, sim_dat, Time=3)
-  W_hat <- W_current
+  W_hat <- W_fun_fun_inference(beta_hat, sim_dat, Time =Time)
   Vhat <- solve(t(G_hat) %*% W_hat %*% G_hat) / J
   se   <- sqrt(diag(Vhat))
   upper <- beta_hat + 1.96 * se
