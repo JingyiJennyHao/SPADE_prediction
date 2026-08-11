@@ -308,6 +308,25 @@ W_hat_fun <- function(beta, sim_dat, Time = 3, ridge = 1e-6) {
   solve(S_hat + ridge * diag(ncol(S_hat)))
 }
 
+W_hat_fun_inference <- function(beta, sim_dat, Time = 3) {
+  j_list <- sort(unique(sim_dat[, "j"]))
+  G <- sapply(
+    j_list,
+    function(j) {
+      score_stack(
+        j,
+        beta,
+        sim_dat,
+        Time = Time
+      )
+    }
+  )
+
+  G <- t(G)
+  S_hat <- cov(G)
+  solve(S_hat)
+}
+
 G_hat_fun <- function(beta, sim_dat, Time = 3) {
   j_list <- sort(unique(sim_dat[, "j"]))
   p <- length(beta)
@@ -455,7 +474,7 @@ run_gmm_inference <- function(beta_hat, seed, out_csv, J = 200, Time = 3,
   sim_dat <- datasets$sim_dat1
   sim_dat2 <- datasets$sim_dat2
 
-  W_hat <- W_hat_fun(beta_hat, sim_dat, Time = Time)
+  W_hat <- W_hat_fun_inference(beta_hat, sim_dat, Time = Time)
   G_hat <- G_hat_fun(beta_hat, sim_dat, Time = Time)
   information <- t(G_hat) %*% W_hat %*% G_hat
   Vhat <- solve(information) / J
